@@ -3,13 +3,24 @@ require 'JSON'
 
 module Chess
   class Game
-    def initialize(file = nil)
-      if file.nil?
-        @board = Board.new
-        @current_player = 'White'
-        @current_turn = 1
-      else
-        load
+    def initialize
+      success = false
+      until success
+        # ask to load?
+        print "Load game? Y/N \n>>>>>> "
+        ## for quicker testing
+        input = gets[0].upcase
+        # puts
+        # input = 'N'
+        ##
+        if input == 'Y'
+          success = load
+        else
+          @board = Board.new
+          @current_player = 'white'
+          @current_turn = 1
+          success = true
+        end
       end
     end
 
@@ -23,7 +34,11 @@ module Chess
 
     def from_json!(string)
       JSON.parse(string).each do |var, val|
-        instance_variable_set var, val
+        if var == '@board'
+          @board = Board.new(val)
+        else
+          instance_variable_set var, val
+        end
       end
     end
 
@@ -32,9 +47,10 @@ module Chess
     end
 
     def load
-      print "Enter filename to save game to.\n>>>>>> "
+      print "Enter filename of savefile.\n>>>>>> "
       begin
         file = gets.chomp
+        # file = 'save1'
         from_json!(File.read(file))
         true
       rescue StandardError
@@ -44,8 +60,9 @@ module Chess
     end
 
     def save
-      print "Enter filename of savefile.\n>>>>>> "
+      print "Enter filename to save game to.\n>>>>>> "
       file = gets.chomp
+      # file = 'save1'
       begin
         File.open(file, 'w') { |f| f.print(to_json) }
         true
@@ -56,13 +73,22 @@ module Chess
     end
 
     def process_turn
-      print "Player #{@current_player}, enter your move, or type SAVE\n>>>>>> "
-      input = gets.upcase
-      if input == 'SAVE'
-        save
-      else
-        # Turn input into move
+      success = false
+      until success
+        print "Player #{@current_player.capitalize}, enter your move, or type SAVE\n>>>>>> "
+        input = gets.chomp.upcase
+        if input == 'SAVE'
+          save
+        else
+          # Turn input into move
+          success = true
+        end
       end
+      next_player
+    end
+
+    def next_player
+      @current_player = @current_player == 'white' ? 'black' : 'white'
     end
 
     def to_s

@@ -3,14 +3,7 @@ require_relative 'lib/game'
 # Module that creates and allows players to play chess
 module Chess
   def self.play_game
-    # ask to load?
-    print "Load game? Y/N \n>>>>>> "
-    input = gets[0].upcase
-    game = if input == 'Y'
-             Chess::Game.new(true)
-           else
-             Chess::Game.new
-           end
+    game = Chess::Game.new
     while game.playing?
       puts game
       game.process_turn
