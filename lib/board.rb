@@ -12,24 +12,33 @@ module Chess
       @rows = 8
       @cols = 8
       if json.nil?
-        @board = Array.new(@rows) { Array.new(@cols) { Square.new('-', nil) } }
-        (0..@cols - 1).each do |col|
-          set_space(col, 2, :pawn_w)
-        end
+        @board = Array.new(@rows) { Array.new(@cols) { Square.new(:empty) } }
+        initial_state
       else
         @board = Array.new(@rows) { Array.new(@cols) }
         json_board = json['@board']
         (0..@cols - 1).each do |col|
           (0..@rows - 1).each do |row|
-            @board[row][col] = Square.new(json_board[row][col]['@piece'], json_board[row][col]['@owner'])
+            @board[row][col] = Square.new(json_board[row][col]['@piece'].to_sym)
           end
         end
       end
     end
 
-    def set_space(row, col, piece)
-      @board[row][col].owner = PIECES[piece][0]
-      @board[row][col].piece = PIECES[piece][1]
+    def initial_state
+      %i[rook_w knight_w bishop_w queen_w king_w bishop_w knight_w rook_w].each_with_index do |space, index|
+        @board[0][index].piece = space
+      end
+      board[1].each { |space| space.piece = :pawn_w }
+
+      %i[rook_b knight_b bishop_b queen_b king_b bishop_b knight_b rook_b].each_with_index do |space, index|
+        @board[@rows - 1][index].piece = space
+      end
+      board[@rows - 2].each { |space| space.piece = :pawn_b }
+    end
+
+    def assign_space(row, col, piece)
+      @board[row][col].piece = piece
     end
 
     def to_json(*_args)
@@ -49,10 +58,10 @@ module Chess
     def to_s
       ret = "   A B C D E F G H\n#{LINE}\n"
 
-      (0..(@rows - 1)).each do |row|
-        ret << "#{row} |"
+      (@rows - 1).downto(0) do |row|
+        ret << "#{row + 1} |"
         (0..(@cols - 1)).each do |col|
-          ret << @board[row][col].piece.encode('utf-8') << '|'
+          ret << @board[row][col].to_s.encode('utf-8') << '|'
         end
         ret << "\n#{LINE}\n"
       end

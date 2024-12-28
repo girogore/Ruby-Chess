@@ -1,18 +1,25 @@
 require_relative 'board'
 require 'JSON'
+require 'pathname'
 
 module Chess
+  # Contains and runs the Chess game
   class Game
+    attr_reader :board, :current_turn
+
     def initialize
+      @board = nil
+      @current_player = 'white'
+      @current_turn = 1
+    end
+
+    def start_game
       success = false
       until success
         # ask to load?
         print "Load game? Y/N \n>>>>>> "
-        ## for quicker testing
         input = gets[0].upcase
-        # puts
-        # input = 'N'
-        ##
+        puts
         if input == 'Y'
           success = load
         else
@@ -50,8 +57,8 @@ module Chess
       print "Enter filename of savefile.\n>>>>>> "
       begin
         file = gets.chomp
-        # file = 'save1'
-        from_json!(File.read(file))
+        path = Pathname.new(file)
+        from_json!(File.read(path))
         true
       rescue StandardError
         puts 'Failed to load file'
@@ -62,9 +69,10 @@ module Chess
     def save
       print "Enter filename to save game to.\n>>>>>> "
       file = gets.chomp
-      # file = 'save1'
       begin
-        File.open(file, 'w') { |f| f.print(to_json) }
+        path = Pathname.new(file)
+        FileUtils.mkdir_p(path.dirname)
+        File.open(path, 'w') { |f| f.print(to_json) }
         true
       rescue StandardError
         puts 'Failed to save to file'

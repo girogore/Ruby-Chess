@@ -4,6 +4,7 @@ require_relative 'lib/game'
 module Chess
   def self.play_game
     game = Chess::Game.new
+    game.start_game
     while game.playing?
       puts game
       game.process_turn
