@@ -11,6 +11,7 @@ module Chess
     def initialize(json = nil)
       @rows = 8
       @cols = 8
+      @castle_allowed = [true, true]
       if json.nil?
         @board = Array.new(@rows) { Array.new(@cols) { Square.new(:empty) } }
         initial_state
@@ -39,6 +40,12 @@ module Chess
 
     def assign_space(row, col, piece)
       @board[row][col].piece = piece
+    end
+
+    def move_piece(start, target)
+      piece = @board[start[0]][start[1]].piece
+      assign_space(start[0], start[1], :empty)
+      assign_space(target[0], target[1], piece)
     end
 
     def to_json(*_args)

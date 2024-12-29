@@ -1,7 +1,7 @@
 require 'JSON'
 
 module Chess
-  PIECES = { empty: [nil, '-', ''],
+  PIECES = { empty: [:empty, '-', ''],
              pawn_w: ['white', "\u2659", '♙'], knight_w: ['white', "\u2658", '♘'], bishop_w: ['white', "\u2657", '♗'],
              rook_w: ['white', "\u2656", '♖'], queen_w: ['white', "\u2655", '♕'], king_w: ['white', "\u2654", '♔'],
              pawn_b: ['black', "\u265F"], knight_b: ['black', "\u265E"], bishop_b: ['black', "\u265D"],
