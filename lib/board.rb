@@ -38,10 +38,12 @@ module Chess
       board[@rows - 2].each { |space| space.piece = :pawn_b }
     end
 
+    # Assigns the space at specified row,col to piece, does no logic checks
     def assign_space(row, col, piece)
       @board[row][col].piece = piece
     end
 
+    # Moves piece at start->target, does no logic checks
     def move_piece(start, target)
       piece = @board[start[0]][start[1]].piece
       assign_space(start[0], start[1], :empty)
@@ -63,10 +65,11 @@ module Chess
     end
 
     def to_s
-      ret = "   A B C D E F G H\n#{LINE}\n"
-
+      ret = "   A B C D E F G H\n#{LINE}\n" # Column label (Letter Format)
+      # ret = "   0 1 2 3 4 5 6 7\n#{LINE}\n"
       (@rows - 1).downto(0) do |row|
-        ret << "#{row + 1} |"
+        # ret << "#{row} |"
+        ret << "#{row + 1} |" # Row Label (offset)
         (0..(@cols - 1)).each do |col|
           ret << @board[row][col].to_s.encode('utf-8') << '|'
         end

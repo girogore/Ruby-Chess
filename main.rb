@@ -25,4 +25,15 @@ module Chess
   end
 end
 
-Chess.play_game
+def test_moves
+  game = Chess::Game.new
+  game.start_game(ask: false)
+  game.board.assign_space(4, 5, :king_w)
+  game.board.assign_space(0, 4, :empty) # remove the old king
+  p game.game_logic.piece_movement_reach([4, 5]).sort
+  # game.game_logic.check?('white')
+  puts game
+end
+test_moves
+
+# Chess.play_game

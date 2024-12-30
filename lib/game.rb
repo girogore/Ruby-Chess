@@ -15,6 +15,12 @@ module Chess
       @game_logic = nil
     end
 
+    def self.opponent(player)
+      return nil if player == :empty
+
+      player == 'white' ? 'black' : 'white'
+    end
+
     def start_game(ask: true)
       success = false
       until success
@@ -110,10 +116,8 @@ module Chess
         return false
       end
       success = @game_logic.legal_move?(start, target)
-      unless success
-        puts 'That is not a legal move'
-        return false
-      end
+      return false unless success
+
       @board.move_piece(start, target)
       true
     end
@@ -132,16 +136,20 @@ module Chess
       [start, target]
     end
 
-    def process_turn
+    def process_turn(force_move = nil)
       success = false
       until success
-        print "Player #{@current_player.capitalize}, enter your move (FROM) (TO), or PRINT or SAVE\n>>>>>> "
-        input = gets.match(/[a-zA-Z1-8 ]+/)
-        next if input.nil?
+        if force_move.nil?
+          print "Player #{@current_player.capitalize}, enter your move (FROM) (TO), or PRINT or SAVE\n>>>>>> "
+          input = gets.match(/[a-zA-Z1-8 ]+/)
+          next if input.nil?
 
-        input = input.to_s.gsub(' ', '') [0..4].upcase
-        next unless input.length == 4 || input == 'PRINT'
-
+          input = input.to_s.gsub(' ', '') [0..4].upcase
+          next unless input.length == 4 || input == 'PRINT'
+        else
+          input = force_move
+          force_move = nil
+        end
         if input == 'SAVE'
           save
         elsif input == 'PRINT'
@@ -154,6 +162,7 @@ module Chess
 
           start = input[0]
           target = input[1]
+          puts "Moving #{@board.board[start[0]][start[1]].proper_name}..."
           success = move(start, target)
           puts 'Try again' unless success
         end
