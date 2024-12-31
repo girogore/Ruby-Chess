@@ -11,7 +11,6 @@ module Chess
     def initialize(json = nil)
       @rows = 8
       @cols = 8
-      @castle_allowed = [true, true]
       if json.nil?
         @board = Array.new(@rows) { Array.new(@cols) { Square.new(:empty) } }
         initial_state
@@ -46,8 +45,15 @@ module Chess
     # Moves piece at start->target, does no logic checks
     def move_piece(start, target)
       piece = @board[start[0]][start[1]].piece
+      owner = @board[start[0]][start[1]].owner
       assign_space(start[0], start[1], :empty)
       assign_space(target[0], target[1], piece)
+      # Castle?
+      row = owner == 'white' ? 0 : 7
+      return unless %i[king_b king_w].include?(piece) || start == [row, 4]
+
+      move_piece([row, 0], [row, 3]) if target[1] == 2 # Long castle
+      move_piece([row, 7], [row, 5]) if target[1] == 6 # Kingside Castle
     end
 
     def to_json(*_args)

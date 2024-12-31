@@ -45,7 +45,7 @@ module Chess
     def to_json(*_args)
       hash = {}
       instance_variables.each do |var|
-        next if var == :@game_logic
+        # next if var == :@game_logic
 
         hash[var] = instance_variable_get var
       end
@@ -54,23 +54,31 @@ module Chess
 
     def from_json!(string)
       JSON.parse(string).each do |var, val|
-        if var == '@board'
+        @game_logic = GameLogic.new(nil)
+        case var
+        when '@board'
           @board = Board.new(val)
-          @game_logic = GameLogic.new(@board.board)
+        when '@game_logic'
+          @game_logic.from_json!(val)
         else
           instance_variable_set var, val
         end
       end
+      @game_logic.board = @board.board
     end
 
     def playing?
       true
     end
 
-    def load
-      print "Enter filename of savefile.\n>>>>>> "
-      begin
+    def load(input_file = nil)
+      if input_file.nil?
+        print "Enter filename of savefile.\n>>>>>> "
         file = gets.chomp
+      else
+        file = input_file
+      end
+      begin
         path = Pathname.new(file)
         from_json!(File.read(path))
         true
@@ -107,7 +115,9 @@ module Chess
         puts 'That space is empty.'
         return false
       end
-      if @board.board[start[0]][start[1]].owner != @current_player
+      piece = @board.board[start[0]][start[1]].piece
+      owner = @board.board[start[0]][start[1]].owner
+      if owner != @current_player
         puts 'That is not your piece.'
         return false
       end
@@ -119,6 +129,11 @@ module Chess
       return false unless success
 
       @board.move_piece(start, target)
+      game_logic.castle_used(owner, :both) if %i[king_b king_w].include?(piece)
+      if %i[rook_b rook_w].include?(piece)
+        game_logic.castle_used(owner, :left) if start[0].zero?
+        game_logic.castle_used(owner, :right) if start[0] == 7
+      end
       true
     end
 
@@ -167,6 +182,8 @@ module Chess
           puts 'Try again' unless success
         end
       end
+      check = @game_logic.check?(Game.opponent(current_player))
+      # Checkmate / Draw check -- similar but one requires the player to be in check
       next_player
     end
 

@@ -6,7 +6,7 @@ SAVE = 'save/'.freeze
 SPEC = 'spec/'.freeze
 
 describe Chess do
-  # Generates an empty gameboard, optional piece can be placed at 2E
+  # Generates an empty gameboard, optional piece can be placed at 2E (1,4)
   def blank_board!(game, piece = :empty)
     game.start_game(ask: false)
     (0..game.board.rows - 1).each do |row|
@@ -106,7 +106,8 @@ describe Chess do
         game = Chess::Game.new
         game.start_game(ask: false)
         game.board.assign_space(4, 5, :pawn_w)
-        expect(game.game_logic.piece_movement_reach([4, 5])).to eql([[5, 5]])
+        game.board.assign_space(5, 6, :pawn_b) # Add a piece to attack diagonal
+        expect(game.game_logic.piece_movement_reach([4, 5]).sort).to eql([[5, 5], [5, 6]].sort)
       end
       it 'Bishop' do
         bishop_array = [[5, 6], [6, 7], [5, 4], [6, 3], [3, 6], [2, 7], [3, 4], [2, 3]].sort
@@ -145,80 +146,62 @@ describe Chess do
         game.board.assign_space(0, 4, :empty) # remove the old king
         expect(game.game_logic.piece_movement_reach([4, 5]).sort).to eql(king_array)
       end
+      it 'King : Castle' do
+        king_array = [[0, 2], [0, 3]].sort
+        game = Chess::Game.new
+        game.start_game(ask: false)
+        game.board.assign_space(0, 3, :empty) # remove the queen/bishop/knight
+        game.board.assign_space(0, 2, :empty)
+        game.board.assign_space(0, 1, :empty)
+        expect(game.game_logic.piece_movement_reach([0, 4]).sort).to eql(king_array)
+      end
+      it 'Disallow Checking yourself' do
+        game = Chess::Game.new
+        blank_board!(game, :king_w)
+        game.board.assign_space(2, 4, :bishop_w)
+        game.board.assign_space(6, 4, :rook_b) # Rook is attacking the king if the bishop moves
+        expect(game.game_logic.piece_movement_reach([2, 4]).sort).to eql([])
+      end
+    end
+  end
+  describe '#Check' do
+    context 'Place king in various checks' do
+      it 'No Check' do
+        game = Chess::Game.new
+        game.start_game(ask: false)
+        expect(game.game_logic.check?('white')).to be false
+      end
+      it 'Queen Check' do
+        game = Chess::Game.new
+        blank_board!(game)
+        game.board.assign_space(4, 5, :king_w)
+        game.board.assign_space(7, 5, :queen_b)
+        expect(game.game_logic.check?('white')).to be true
+      end
     end
   end
 
   describe '#force_move' do
-    context 'Move pieces uninhibited' do
-      xit 'Move white pawn up 1' do
-        save_file = 'pawn1_success'
-        FileUtils.rm_f(SAVE + save_file)
+    context 'Move pieces' do
+      it 'Move white king : Castle' do
         game = Chess::Game.new
-        allow(game).to receive(:gets).and_return('2E 3E', SAVE + save_file)
-        blank_board!(game, :pawn_w)
-        game.process_turn
-        game.save
-        expect(FileUtils.compare_file(SAVE + save_file, "#{SPEC}#{save_file}")).to be true
+        game.start_game(ask: false)
+        game.board.assign_space(0, 3, :empty) # remove the queen/bishop/knight
+        game.board.assign_space(0, 2, :empty)
+        game.board.assign_space(0, 1, :empty)
+        game.move([0, 4], [0, 2])
+        expect(game.board.board[0].map(&:piece)).to eql(%i[empty empty king_w rook_w empty bishop_w knight_w rook_w])
       end
-      xit 'Move white pawn up 2' do
-        save_file = 'pawn2_success'
-        FileUtils.rm_f(SAVE + save_file)
+      it 'Fail to move white king : Castle' do
         game = Chess::Game.new
-        allow(game).to receive(:gets).and_return('2E 4E', SAVE + save_file)
-        blank_board!(game, :pawn_w)
-        game.process_turn
-        game.save
-        expect(FileUtils.compare_file(SAVE + save_file, "#{SPEC}#{save_file}")).to be true
-      end
-      xit 'Move white bishop diagonal 3' do
-        save_file = 'bishop_success'
-        FileUtils.rm_f(SAVE + save_file)
-        game = Chess::Game.new
-        allow(game).to receive(:gets).and_return('2E 5H', SAVE + save_file)
-        blank_board!(game, :bishop_w)
-        game.process_turn
-        game.save
-        expect(FileUtils.compare_file(SAVE + save_file, "#{SPEC}#{save_file}")).to be true
-      end
-      xit 'Move white rook up 5' do
-        save_file = 'rook_success'
-        FileUtils.rm_f(SAVE + save_file)
-        game = Chess::Game.new
-        allow(game).to receive(:gets).and_return('2E 7E', SAVE + save_file)
-        blank_board!(game, :rook_w)
-        game.process_turn
-        game.save
-        expect(FileUtils.compare_file(SAVE + save_file, "#{SPEC}#{save_file}")).to be true
-      end
-      xit 'Move white knight' do
-        save_file = 'knight_success'
-        FileUtils.rm_f(SAVE + save_file)
-        game = Chess::Game.new
-        allow(game).to receive(:gets).and_return('2E 3G', SAVE + save_file)
-        blank_board!(game, :knight_w)
-        game.process_turn
-        game.save
-        expect(FileUtils.compare_file(SAVE + save_file, "#{SPEC}#{save_file}")).to be true
-      end
-      xit 'Move white queen diagonal' do
-        save_file = 'queen_success'
-        FileUtils.rm_f(SAVE + save_file)
-        game = Chess::Game.new
-        allow(game).to receive(:gets).and_return('2E A6', SAVE + save_file)
-        blank_board!(game, :queen_w)
-        game.process_turn
-        game.save
-        expect(FileUtils.compare_file(SAVE + save_file, "#{SPEC}#{save_file}")).to be true
-      end
-      xit 'Move white king back' do
-        save_file = 'king_success'
-        FileUtils.rm_f(SAVE + save_file)
-        game = Chess::Game.new
-        allow(game).to receive(:gets).and_return('2E 1E', SAVE + save_file)
-        blank_board!(game, :king_w)
-        game.process_turn
-        game.save
-        expect(FileUtils.compare_file(SAVE + save_file, "#{SPEC}#{save_file}")).to be true
+        game.start_game(ask: false)
+        game.board.assign_space(0, 3, :empty) # remove the queen/bishop/knight
+        game.board.assign_space(0, 2, :empty)
+        game.board.assign_space(0, 1, :empty)
+        game.board.assign_space(1, 4, :empty) # Pawn above king
+        game.move([0, 4], [1, 4])
+        game.move([1, 4], [0, 4]) # Move the king
+        expect(game.move([0, 4], [0, 2])).to be false
       end
       it 'Fail to move opponents piece' do
         game = Chess::Game.new

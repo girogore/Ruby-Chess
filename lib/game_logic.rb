@@ -1,28 +1,47 @@
-require_relative 'board'
 require_relative 'game'
 
 module Chess
   # Handles all chess logic for the board
   class GameLogic
+    attr_accessor :previous_move, :board, :castle_allowed
+
     def initialize(board)
+      return if board.nil?
+
       @board = board
-      @previous_board = nil
-      @test_board = nil
-      @rows = board[0].length
-      @cols = board.length
+      @previous_move = nil
+      @rows = @board.length
+      @cols = @board[0].length
+      @castle_allowed = [[true, true], [true, true]] # White [left, right] Black [left, right]
     end
 
     def to_json(*_args)
       hash = {}
       instance_variables.each do |var|
+        next if var == :@board
+
         hash[var] = instance_variable_get var
       end
       hash.to_json
     end
 
     def from_json!(string)
-      JSON.parse(string).each do |var, val|
+      string.each do |var, val|
         instance_variable_set var, val
+      end
+    end
+
+    # Side = :left, :right, :both
+    def castle_used(player, side)
+      player_index = player == 'white' ? 0 : 1
+      case side
+      when :left
+        castle_allowed[player_index][0] = false
+      when :right
+        castle_allowed[player_index][1] = false
+      when :both
+        castle_allowed[player_index][0] = false
+        castle_allowed[player_index][1] = false
       end
     end
 
@@ -40,34 +59,6 @@ module Chess
       false
     end
 
-    #
-    #     def try_move_knight?(start, target, board)
-    #       return false if start[0] == target[0] || start[1] == target[1] # straight line
-    #
-    #       (start[0] - target[0]).abs + (start[1] - target[1]).abs == 3
-    #     end
-    #
-    #     def try_move_bishop?(start, target, board = @board)
-    #       return false unless (start[0] - target[0]).abs == (start[1] - target[1]).abs
-    #
-    #       !collision?(start, target, board)
-    #     end
-    #
-    #     def try_move_queen?(start, target, board = @board)
-    #       if (start[0] - target[0]).abs != (start[1] - target[1].abs) || (start[0] == target[0]) || (start[1] == target[1])
-    #         false
-    #       end
-    #       !collision?(start, target, board)
-    #     end
-    #
-    #     def try_move_king?(start, target, board = @board)
-    #       # TODO: Check for castling
-    #
-    #       distance = (start[0] - target[0]).abs + (start[1] - target[1]).abs
-    #       return distance == 1 if (start[0] == target[0]) || (start[1] == target[1])
-    #
-    #       distance == 2
-    #     end
     def legal_move?(start, target, board = @board)
       reach = piece_movement_reach(start, board)
       success = reach.include?(target)
@@ -86,20 +77,20 @@ module Chess
       if owner == 'white'
         return ret if location[0] >= @rows - 1
 
-        if location[0] != 0 && board[location[0] - 1][location[1] + 1].owner == opponent
-          ret << [location[0] - 1, location[1] + 1]
+        if location[1] != 0 && board[location[0] + 1][location[1] - 1].owner == opponent
+          ret << [location[0] + 1, location[1] - 1]
         end
-        if location[0] != @cols - 1 && board[location[0] + 1][location[1] + 1].owner == opponent
+        if location[1] != @cols - 1 && board[location[0] + 1][location[1] + 1].owner == opponent
           ret << [location[0] + 1, location[1] + 1]
         end
       elsif owner == 'black'
         return ret if location[0].zero?
 
-        if location[0] != 0 && board[location[0] - 1][location[1] - 1].owner == opponent
+        if location[1] != 0 && board[location[0] - 1][location[1] - 1].owner == opponent
           ret << [location[0] - 1, location[1] - 1]
         end
-        if location[0] != @cols - 1 && board[location[0] + 1][location[1] - 1].owner == opponent
-          ret << [location[0] + 1, location[1] - 1]
+        if location[1] != @cols - 1 && board[location[0] - 1][location[1] + 1].owner == opponent
+          ret << [location[0] - 1, location[1] + 1]
         end
       end
       ret
@@ -184,7 +175,25 @@ module Chess
     end
 
     def king_movement_reach(location, board = @board)
-      bishop_movement_reach(location, board, 1).concat(rook_movement_reach(location, board, 1))
+      owner = board[location[0]][location[1]].owner
+      ret = bishop_movement_reach(location, board, 1).concat(rook_movement_reach(location, board, 1))
+      # checking for allowed castle
+      return ret if check?(owner, board) # Cant castle while in check
+
+      row = owner == 'white' ? 0 : 7
+      if @castle_allowed[owner == 'white' ? 0 : 1][0] &&
+         !collision?(location, [row, 0], board) && board[row][0].piece == (owner == 'white' ? :rook_w : :rook_b)
+        safe_move = true
+        [[row, 3], [row, 2]].each { |square| safe_move = false if under_attack?(square, owner, board) }
+        ret << [row, 2] if safe_move
+      end
+      if @castle_allowed[owner == 'white' ? 0 : 1][1] &&
+         !collision?(location, [row, 7], board) && board[row][7].piece == (owner == 'white' ? :rook_w : :rook_b)
+        safe_move = true
+        [[row, 5], [row, 6]].each { |square| safe_move = false if under_attack?(square, owner, board) }
+        ret << [row, 6] if safe_move
+      end
+      ret
     end
 
     # returns an array of all the x,y pairs the piece can attack
@@ -205,13 +214,30 @@ module Chess
       end
     end
 
+    def move_piece_array(start, target, board)
+      piece = board[start[0]][start[1]].piece
+      board[start[0]][ start[1]].piece = :empty
+      board[target[0]][ target[1]].piece = piece
+    end
+
     # Returns an array of all the x,y pairs the piece can reach
     def piece_movement_reach(location, board = @board)
-      if %i[pawn_w pawn_b].include?(board[location[0]][location[1]].piece)
-        pawn_move_reach(location, board).concat(pawn_attack_reach(location, board))
-      else
-        piece_attack_reach(location, board)
+      owner = board[location[0]][location[1]].owner
+      test_ret = if %i[pawn_w pawn_b].include?(board[location[0]][location[1]].piece)
+                   pawn_move_reach(location, board).concat(pawn_attack_reach(location, board))
+                 else
+                   piece_attack_reach(location, board)
+                 end
+      ret = []
+      # Moves that put you in check are not allowed
+      return [] if test_ret.nil?
+
+      test_ret.each do |test_move|
+        check_board = Marshal.load(Marshal.dump(board))
+        move_piece_array(location, test_move, check_board)
+        ret << test_move unless check?(owner, check_board)
       end
+      ret
     end
 
     def under_attack?(location, attacked_player, board = @board)
@@ -219,8 +245,10 @@ module Chess
       (0..@rows - 1).each do |row|
         (0..@cols - 1).each do |col|
           next unless board[row][col].owner == Game.opponent(attacked_player)
+          next if %i[king_b king_w].include?(board[row][col].piece)
 
           reach = piece_attack_reach([row, col], board)
+          next if reach.nil?
           return true if reach.include?(location)
         end
       end
@@ -240,7 +268,7 @@ module Chess
           end
         end
       end
-      under_attack?(king, board)
+      under_attack?(king, player, board)
     end
   end
 end
