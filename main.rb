@@ -21,19 +21,20 @@ module Chess
     end
     puts game
     winner = game.who_won
-    winner.nil? ? puts('No winner!') : puts("Player #{winner} won!")
+    winner == :draw ? puts('No winner!') : puts("Player #{winner} won!")
   end
 end
 
-def test_moves
-  game = Chess::Game.new
-  game.start_game(ask: false)
-  game.board.assign_space(4, 5, :king_w)
-  game.board.assign_space(0, 4, :empty) # remove the old king
-  p game.game_logic.piece_movement_reach([4, 5]).sort
-  # game.game_logic.check?('white')
-  puts game
-end
-test_moves
+# def test_moves
+#   game = Chess::Game.new
+#   Chess.blank_board!(game)
+#   game.board.assign_space(0, 0, :king_w)
+#   game.board.assign_space(7, 0, :king_b)
+#   game.board.assign_space(6, 4, :pawn_w)
+#   puts game
+#   game.process_turn
+#   puts game
+# end
+# test_moves
 
-# Chess.play_game
+Chess.play_game

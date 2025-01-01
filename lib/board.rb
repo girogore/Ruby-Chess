@@ -42,6 +42,35 @@ module Chess
       @board[row][col].piece = piece
     end
 
+    def promotion(player)
+      row = player == 'white' ? @cols - 1 : 0
+      board[row].each_with_index do |piece, idx|
+        next unless %i[pawn_b pawn_w].include?(piece.piece)
+
+        print "Promote your #{('A'.ord + idx).chr} pawn\n>>>>>> "
+        success = false
+        until success
+          input = gets.chomp.downcase
+          case input
+          when 'queen'
+            assign_space(row, idx, player == 'white' ? :queen_w : :queen_b)
+            success = true
+          when 'rook'
+            assign_space(row, idx, player == 'white' ? :rook_w : :rook_b)
+            success = true
+          when 'bishop'
+            assign_space(row, idx, player == 'white' ? :bishop_w : :bishop_b)
+            success = true
+          when 'knight'
+            assign_space(row, idx, player == 'white' ? :knight_w : :knight_b)
+            success = true
+          else
+            puts 'Please choose 1 of the following: queen, rook, bishop, knight'
+          end
+        end
+      end
+    end
+
     # Moves piece at start->target, does no logic checks
     def move_piece(start, target)
       piece = @board[start[0]][start[1]].piece
@@ -52,8 +81,8 @@ module Chess
       row = owner == 'white' ? 0 : 7
       return unless %i[king_b king_w].include?(piece) || start == [row, 4]
 
-      move_piece([row, 0], [row, 3]) if target[1] == 2 # Long castle
-      move_piece([row, 7], [row, 5]) if target[1] == 6 # Kingside Castle
+      move_piece([row, 0], [row, 3]) if target == [row, 2] # Long castle
+      move_piece([row, 7], [row, 5]) if target[1] == [row, 6] # Kingside Castle
     end
 
     def to_json(*_args)

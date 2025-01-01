@@ -66,7 +66,6 @@ module Chess
         puts "#{board[start[0]][start[1]].proper_name} does not move that way"
         return false
       end
-      p 'Checking for other things..'
       true
     end
 
@@ -93,8 +92,19 @@ module Chess
           ret << [location[0] - 1, location[1] + 1]
         end
       end
+
+      # En passant
+      unless previous_move.nil?
+        start = previous_move[0]
+        target = previous_move[1]
+        # if previous move was an adjacent pawn that moved forward twice
+        if target[0] == location[0] && (location[1] - target[1]).abs == 1 &&
+           %i[pawn_w pawn_b].include?(board[target[0]][target[1]].piece) &&
+           start[1] == target[1] && (start[0] - target[0]).abs == 2
+          ret << [target[0] + (owner == 'white' ? 1 : -1), target[1]]
+        end
+      end
       ret
-      # TODO: En passant??
     end
 
     def pawn_move_reach(location, board = @board)
@@ -115,7 +125,7 @@ module Chess
         end
         if location[0] == 6 && (!collision?(location, two_down,
                                             board) && board[two_down[0]][two_down[1]].owner == (:empty))
-          ret << two_up
+          ret << two_down
         end
       end
       ret
@@ -223,14 +233,15 @@ module Chess
     # Returns an array of all the x,y pairs the piece can reach
     def piece_movement_reach(location, board = @board)
       owner = board[location[0]][location[1]].owner
-      test_ret = if %i[pawn_w pawn_b].include?(board[location[0]][location[1]].piece)
+      piece = board[location[0]][location[1]].piece
+      test_ret = if %i[pawn_w pawn_b].include?(piece)
                    pawn_move_reach(location, board).concat(pawn_attack_reach(location, board))
                  else
                    piece_attack_reach(location, board)
                  end
       ret = []
       # Moves that put you in check are not allowed
-      return [] if test_ret.nil?
+      return [] if test_ret.nil? || test_ret.empty?
 
       test_ret.each do |test_move|
         check_board = Marshal.load(Marshal.dump(board))
@@ -269,6 +280,18 @@ module Chess
         end
       end
       under_attack?(king, player, board)
+    end
+
+    def checkmate?(player, board = @board)
+      (0..@rows - 1).each do |row|
+        (0..@cols - 1).each do |col|
+          next unless board[row][col].owner == player
+
+          reach = piece_movement_reach([row, col], board) # If player has a move, they aren't in checkmate
+          return false unless reach.nil? || reach.empty?
+        end
+      end
+      true
     end
   end
 end

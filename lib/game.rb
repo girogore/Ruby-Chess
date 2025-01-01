@@ -68,7 +68,7 @@ module Chess
     end
 
     def playing?
-      true
+      !@game_logic.checkmate?(current_player, @board.board)
     end
 
     def load(input_file = nil)
@@ -163,12 +163,12 @@ module Chess
           next unless input.length == 4 || input == 'PRINT'
         else
           input = force_move
+          input = input.match(/[a-zA-Z1-8 ]+/).to_s.gsub(' ', '') [0..4].upcase
           force_move = nil
         end
         if input == 'SAVE'
           save
         elsif input == 'PRINT'
-          puts '*****'
           puts self
         else
           # Turn input into move
@@ -182,13 +182,21 @@ module Chess
           puts 'Try again' unless success
         end
       end
-      check = @game_logic.check?(Game.opponent(current_player))
-      # Checkmate / Draw check -- similar but one requires the player to be in check
+      @board.promotion(current_player)
+      @game_logic.previous_move = [start, target]
       next_player
     end
 
+    def who_won
+      check = @game_logic.check?(current_player)
+      # Checkmate / Draw check -- similar but one requires the player to be in check
+      return :draw unless check
+
+      Game.opponent(current_player)
+    end
+
     def next_player
-      @current_player = @current_player == 'white' ? 'black' : 'white'
+      @current_player = Game.opponent(current_player)
     end
 
     def to_s
